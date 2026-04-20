@@ -1,3 +1,7 @@
+import requests
+import logging
+
+logger = logging.getLogger(__name__)
 DGIDB_URL  = 'https://dgidb.org/api/graphql'
 DRUG_QUERY = '''
 query GetDrugInteractions($gene: String!) {
