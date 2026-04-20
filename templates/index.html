@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GeneLens — Gene → Drug Pipeline</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #060910;
+      --surface:   #0d1117;
+      --border:    #1e2a38;
+      --accent:    #00e5ff;
+      --accent2:   #7c3aed;
+      --success:   #00c896;
+      --warn:      #f59e0b;
+      --danger:    #ef4444;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --card:      #0f1923;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      overflow-x: hidden;
+    }
+
+    /* ── Background grid ─────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Glow orbs ───────────────────────────────────── */
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(120px); pointer-events: none; z-index: 0;
+    }
+    .orb-1 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(0,229,255,0.08), transparent 70%);
+      top: -100px; left: -100px;
+    }
+    .orb-2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(124,58,237,0.07), transparent 70%);
+      bottom: 0; right: -80px;
+    }
+
+    /* ── Layout ──────────────────────────────────────── */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      position: relative; z-index: 1;
+    }
+
+    /* ── Header ──────────────────────────────────────── */
+    header {
+      padding: 56px 0 48px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .logo-row {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.2rem; font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .tagline {
+      color: var(--muted);
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .pipeline-flow {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap;
+      font-size: 0.78rem; color: var(--muted);
+      margin-top: 10px;
+    }
+
+    .flow-step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 4px 10px; border-radius: 4px;
+      color: var(--text); font-size: 0.75rem;
+    }
+
+    .flow-arrow { color: var(--accent); font-size: 0.9rem; }
+
+    /* ── Search bar ──────────────────────────────────── */
+    .search-section { margin-bottom: 40px; }
+
+    .search-label {
+      display: block;
+      font-size: 0.72rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .search-row {
+      display: flex; gap: 10px;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem; font-weight: 500;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      letter-spacing: 0.06em;
+    }
+
+    .search-input::placeholder { color: var(--muted); }
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,229,255,0.08);
+    }
+
+    .search-btn {
+      background: var(--accent);
+      color: #060910;
+      border: none; border-radius: 8px;
+      padding: 14px 28px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .search-btn:hover { opacity: 0.9; }
+    .search-btn:active { transform: scale(0.98); }
+    .search-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .quick-genes {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .quick-chip {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 12px; border-radius: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .quick-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Loading state ───────────────────────────────── */
+    .loading {
+      display: none;
+      text-align: center; padding: 60px 0;
+    }
+
+    .loading.active { display: block; }
+
+    .dna-spinner {
+      font-size: 2.5rem;
+      animation: spin 1.2s linear infinite;
+      display: inline-block; margin-bottom: 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      color: var(--muted); font-size: 0.8rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+    }
+
+    .loading-stages {
+      margin-top: 20px;
+      display: flex; flex-direction: column; gap: 6px;
+      max-width: 280px; margin-left: auto; margin-right: auto;
+    }
+
+    .stage-row {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.75rem; color: var(--muted);
+      padding: 6px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border); border-radius: 6px;
+    }
+
+    .stage-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--border);
+      transition: background 0.4s;
+    }
+    .stage-dot.active  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .stage-dot.done    { background: var(--success); }
+    .stage-dot.error   { background: var(--danger); }
+
+    /* ── Error banner ────────────────────────────────── */
+    .error-banner {
+      display: none;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px;
+      padding: 16px 20px;
+      color: var(--danger);
+      font-size: 0.82rem;
+      margin-bottom: 24px;
+    }
+    .error-banner.active { display: block; }
+
+    /* ── Results ─────────────────────────────────────── */
+    #results { display: none; }
+    #results.active { display: block; }
+
+    .result-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .gene-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(124,58,237,0.1));
+      border: 1px solid rgba(0,229,255,0.25);
+      padding: 6px 14px; border-radius: 6px;
+      font-family: 'Syne', sans-serif;
+      font-size: 1.3rem; font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+
+    .protein-name {
+      font-size: 0.82rem; color: var(--muted);
+      margin-top: 6px; line-height: 1.5;
+    }
+
+    .copy-json-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 8px 16px; border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    .copy-json-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Cards grid ──────────────────────────────────── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .info-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+    .info-card:hover { border-color: rgba(0,229,255,0.2); }
+
+    .card-label {
+      font-size: 0.65rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 0.9rem; font-weight: 500;
+      color: var(--text); word-break: break-all;
+    }
+
+    .card-value a {
+      color: var(--accent); text-decoration: none;
+      font-size: 0.78rem;
+    }
+    .card-value a:hover { text-decoration: underline; }
+
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 500;
+    }
+
+    .status-pill.ok {
+      background: rgba(0,200,150,0.1);
+      border: 1px solid rgba(0,200,150,0.3);
+      color: var(--success);
+    }
+    .status-pill.warn {
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: var(--warn);
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* ── Drug table ──────────────────────────────────── */
+    .drugs-section { margin-top: 8px; }
+
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem; font-weight: 700;
+      color: var(--text);
+    }
+
+    .drug-count-badge {
+      background: rgba(0,229,255,0.1);
+      border: 1px solid rgba(0,229,255,0.2);
+      color: var(--accent);
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 500;
+    }
+
+    .filter-row {
+      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 5px 14px; border-radius: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      border-color: var(--accent); color: var(--accent);
+      background: rgba(0,229,255,0.05);
+    }
+
+    .drug-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    thead tr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 0.65rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted);
+      font-weight: 400;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+    td { padding: 11px 16px; vertical-align: top; }
+
+    .drug-name { font-weight: 500; color: var(--text); }
+
+    .approved-badge {
+      display: inline-block;
+      padding: 2px 8px; border-radius: 4px;
+      font-size: 0.65rem; font-weight: 500;
+    }
+    .approved-badge.yes {
+      background: rgba(0,200,150,0.1); color: var(--success);
+      border: 1px solid rgba(0,200,150,0.25);
+    }
+    .approved-badge.no {
+      background: rgba(100,116,139,0.1); color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .score-bar-wrap {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .score-bar {
+      height: 4px; border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      min-width: 4px;
+    }
+    .score-val { color: var(--muted); font-size: 0.7rem; }
+
+    .type-tag {
+      display: inline-block;
+      background: rgba(124,58,237,0.1);
+      border: 1px solid rgba(124,58,237,0.2);
+      color: #a78bfa;
+      padding: 1px 7px; border-radius: 4px;
+      font-size: 0.65rem; margin: 1px;
+    }
+
+    .src-tag {
+      color: var(--muted); font-size: 0.68rem;
+    }
+
+    .no-drugs {
+      text-align: center; padding: 40px;
+      color: var(--muted); font-size: 0.8rem;
+    }
+
+    /* ── Errors section ──────────────────────────────── */
+    .errors-section {
+      margin-top: 24px;
+      background: rgba(239,68,68,0.05);
+      border: 1px solid rgba(239,68,68,0.15);
+      border-radius: 10px; padding: 16px 20px;
+    }
+
+    .errors-title {
+      font-size: 0.7rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--danger);
+      margin-bottom: 10px;
+    }
+
+    .error-item {
+      display: flex; gap: 10px;
+      font-size: 0.75rem; color: var(--muted);
+      padding: 4px 0;
+    }
+
+    .error-stage { color: var(--danger); min-width: 80px; }
+
+    /* ── Footer ──────────────────────────────────────── */
+    footer {
+      margin-top: 64px; padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between;
+      align-items: center; flex-wrap: gap;
+      font-size: 0.7rem; color: var(--muted);
+    }
+
+    .footer-sources { display: flex; gap: 16px; }
+    .footer-sources a { color: var(--muted); text-decoration: none; }
+    .footer-sources a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="container">
+
+    <!-- ── Header ─────────────────────────────────────── -->
+    <header>
+      <div class="logo-row">
+        <div class="logo-icon">🧬</div>
+        <h1>GeneLens</h1>
+      </div>
+      <p class="tagline">Bioinformatics Pipeline Tool</p>
+      <div class="pipeline-flow">
+        <span class="flow-step">Gene Symbol</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">UniProt</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">AlphaFold</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step">DGIdb Drugs</span>
+      </div>
+    </header>
+
+    <!-- ── Search ─────────────────────────────────────── -->
+    <section class="search-section">
+      <label class="search-label" for="geneInput">Enter Gene Symbol (HGNC)</label>
+      <div class="search-row">
+        <input
+          type="text" id="geneInput"
+          class="search-input"
+          placeholder="e.g. TP53, BRCA1, EGFR..."
+          autocomplete="off" spellcheck="false"
+          maxlength="20"
+        />
+        <button class="search-btn" id="searchBtn" onclick="runPipeline()">
+          Run Pipeline
+        </button>
+      </div>
+      <div class="quick-genes">
+        <span style="font-size:0.68rem;color:var(--muted);align-self:center;">Try:</span>
+        <button class="quick-chip" onclick="quickSearch('TP53')">TP53</button>
+        <button class="quick-chip" onclick="quickSearch('BRCA1')">BRCA1</button>
+        <button class="quick-chip" onclick="quickSearch('EGFR')">EGFR</button>
+        <button class="quick-chip" onclick="quickSearch('ALK')">ALK</button>
+        <button class="quick-chip" onclick="quickSearch('BRAF')">BRAF</button>
+        <button class="quick-chip" onclick="quickSearch('KRAS')">KRAS</button>
+      </div>
+    </section>
+
+    <!-- ── Error banner ───────────────────────────────── -->
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- ── Loading ────────────────────────────────────── -->
+    <div class="loading" id="loading">
+      <div class="dna-spinner">🔬</div>
+      <div class="loading-text">Running pipeline...</div>
+      <div class="loading-stages">
+        <div class="stage-row" id="stage-uniprot">
+          <div class="stage-dot" id="dot-uniprot"></div>
+          UniProt lookup
+        </div>
+        <div class="stage-row" id="stage-alphafold">
+          <div class="stage-dot" id="dot-alphafold"></div>
+          AlphaFold structure
+        </div>
+        <div class="stage-row" id="stage-drugs">
+          <div class="stage-dot" id="dot-drugs"></div>
+          Drug interactions (DGIdb)
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Results ────────────────────────────────────── -->
+    <div id="results">
+
+      <div class="result-header">
+        <div>
+          <div class="gene-badge">
+            <span>🧬</span>
+            <span id="res-gene"></span>
+          </div>
+          <div class="protein-name" id="res-protein"></div>
+        </div>
+        <button class="copy-json-btn" onclick="copyJSON()">⎘ Copy JSON</button>
+      </div>
+
+      <!-- Info cards -->
+      <div class="cards-grid">
+        <div class="info-card">
+          <div class="card-label">UniProt ID</div>
+          <div class="card-value" id="res-uniprot-id">—</div>
+        </div>
+        <div class="info-card">
+          <div class="card-label">Organism</div>
+          <div class="card-value" id="res-organism">—</div>
+        </div>
+        <div class="info-card">
+          <div class="card-label">Sequence Length</div>
+          <div class="card-value" id="res-seqlen">—</div>
+        </div>
+        <div class="info-card">
+          <div class="card-label">AlphaFold Structure</div>
+          <div class="card-value" id="res-alphafold">—</div>
+        </div>
+      </div>
+
+      <!-- Drug table -->
+      <div class="drugs-section">
+        <div class="section-header">
+          <div class="section-title">Drug Interactions</div>
+          <div class="drug-count-badge" id="drug-count-badge">0 drugs</div>
+        </div>
+
+        <div class="filter-row">
+          <button class="filter-btn active" onclick="filterDrugs('all', this)">All</button>
+          <button class="filter-btn" onclick="filterDrugs('approved', this)">FDA Approved</button>
+          <button class="filter-btn" onclick="filterDrugs('investigational', this)">Investigational</button>
+        </div>
+
+        <div class="drug-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Drug Name</th>
+                <th>Approved</th>
+                <th>Score</th>
+                <th>Type</th>
+                <th>Sources</th>
+              </tr>
+            </thead>
+            <tbody id="drug-table-body">
+            </tbody>
+          </table>
+          <div class="no-drugs" id="no-drugs" style="display:none;">
+            No drug interactions found in DGIdb for this gene.
+          </div>
+        </div>
+      </div>
+
+      <!-- Pipeline errors (if any) -->
+      <div class="errors-section" id="errors-section" style="display:none;">
+        <div class="errors-title">⚠ Pipeline Warnings</div>
+        <div id="errors-list"></div>
+      </div>
+
+    </div><!-- /results -->
+
+    <footer>
+      <div>GeneLens — Gene Drug Pipeline</div>
+      <div class="footer-sources">
+        <a href="https://www.uniprot.org" target="_blank">UniProt</a>
+        <a href="https://alphafold.ebi.ac.uk" target="_blank">AlphaFold DB</a>
+        <a href="https://dgidb.org" target="_blank">DGIdb</a>
+      </div>
+    </footer>
+
+  </div><!-- /container -->
+
+  <script>
+    let currentResult = null;
+    let allDrugs = [];
+
+    // ── Enter key support ──────────────────────────────
+    document.getElementById('geneInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') runPipeline();
+    });
+
+    function quickSearch(gene) {
+      document.getElementById('geneInput').value = gene;
+      runPipeline();
+    }
+
+    // ── Animate loading stages ─────────────────────────
+    function animateStages() {
+      const stages = ['uniprot', 'alphafold', 'drugs'];
+      const delays = [0, 1200, 2400];
+      stages.forEach((s, i) => {
+        setTimeout(() => {
+          document.getElementById(`dot-${s}`).className = 'stage-dot active';
+        }, delays[i]);
+      });
+    }
+
+    function resetStages() {
+      ['uniprot', 'alphafold', 'drugs'].forEach(s => {
+        document.getElementById(`dot-${s}`).className = 'stage-dot';
+      });
+    }
+
+    // ── Main pipeline call ─────────────────────────────
+    async function runPipeline() {
+      const gene = document.getElementById('geneInput').value.trim().toUpperCase();
+      if (!gene) return;
+
+      // Reset UI
+      document.getElementById('errorBanner').classList.remove('active');
+      document.getElementById('results').classList.remove('active');
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('searchBtn').disabled = true;
+      resetStages();
+      animateStages();
+
+      try {
+        const response = await fetch('/api/pipeline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gene })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        currentResult = data;
+        renderResults(data);
+
+      } catch (err) {
+        document.getElementById('errorBanner').textContent =
+          `Error: ${err.message}`;
+        document.getElementById('errorBanner').classList.add('active');
+      } finally {
+        document.getElementById('loading').classList.remove('active');
+        document.getElementById('searchBtn').disabled = false;
+      }
+    }
+
+    // ── Render results ─────────────────────────────────
+    function renderResults(data) {
+      // Header
+      document.getElementById('res-gene').textContent = data.gene;
+      document.getElementById('res-protein').textContent =
+        data.protein_name || 'Protein name unavailable';
+
+      // Cards
+      document.getElementById('res-uniprot-id').textContent =
+        data.uniprot_id || '—';
+      document.getElementById('res-organism').textContent =
+        data.organism || '—';
+      document.getElementById('res-seqlen').textContent =
+        data.sequence_length ? `${data.sequence_length} aa` : '—';
+
+      // AlphaFold card
+      const afEl = document.getElementById('res-alphafold');
+      if (data.alphafold_structure_exists && data.alphafold_url) {
+        afEl.innerHTML = `
+          <div class="status-pill ok" style="margin-bottom:8px;">
+            <span class="status-dot"></span> Structure Available
+          </div><br>
+          <a href="${data.alphafold_url}" target="_blank">⬇ Download PDB</a>
+          &nbsp;&nbsp;
+          <a href="${data.alphafold_viewer_url}" target="_blank">👁 View 3D</a>
+        `;
+      } else {
+        afEl.innerHTML = `
+          <div class="status-pill warn">
+            <span class="status-dot"></span> No Structure Found
+          </div>
+        `;
+      }
+
+      // Drug table
+      allDrugs = data.drugs || [];
+      renderDrugTable(allDrugs);
+
+      // Errors
+      const errors = data.errors || {};
+      if (Object.keys(errors).length > 0) {
+        const errList = document.getElementById('errors-list');
+        errList.innerHTML = Object.entries(errors).map(([stage, msg]) =>
+          `<div class="error-item">
+            <span class="error-stage">${stage}</span>
+            <span>${msg}</span>
+           </div>`
+        ).join('');
+        document.getElementById('errors-section').style.display = 'block';
+      } else {
+        document.getElementById('errors-section').style.display = 'none';
+      }
+
+      document.getElementById('results').classList.add('active');
+    }
+
+    // ── Drug table render ──────────────────────────────
+    function renderDrugTable(drugs) {
+      const tbody = document.getElementById('drug-table-body');
+      const noDrugs = document.getElementById('no-drugs');
+      const badge = document.getElementById('drug-count-badge');
+
+      badge.textContent = `${drugs.length} drug${drugs.length !== 1 ? 's' : ''}`;
+
+      if (!drugs.length) {
+        tbody.innerHTML = '';
+        noDrugs.style.display = 'block';
+        return;
+      }
+
+      noDrugs.style.display = 'none';
+
+      // Max score for bar scaling
+      const maxScore = Math.max(...drugs.map(d => d.interaction_score || 0), 1);
+
+      tbody.innerHTML = drugs.map(drug => {
+        const barWidth = Math.max(4, Math.round((drug.interaction_score / maxScore) * 80));
+        const types = (drug.interaction_types || [])
+          .filter(Boolean)
+          .map(t => `<span class="type-tag">${t}</span>`)
+          .join('');
+        const sources = (drug.sources || []).filter(Boolean).join(', ');
+
+        return `
+          <tr>
+            <td class="drug-name">${drug.name}</td>
+            <td>
+              <span class="approved-badge ${drug.approved ? 'yes' : 'no'}">
+                ${drug.approved ? '✓ Yes' : 'No'}
+              </span>
+            </td>
+            <td>
+              <div class="score-bar-wrap">
+                <div class="score-bar" style="width:${barWidth}px"></div>
+                <span class="score-val">${drug.interaction_score}</span>
+              </div>
+            </td>
+            <td>${types || '<span style="color:var(--muted)">—</span>'}</td>
+            <td class="src-tag">${sources || '—'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ── Filter buttons ─────────────────────────────────
+    function filterDrugs(mode, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (mode === 'all') renderDrugTable(allDrugs);
+      else if (mode === 'approved') renderDrugTable(allDrugs.filter(d => d.approved));
+      else if (mode === 'investigational') renderDrugTable(allDrugs.filter(d => !d.approved));
+    }
+
+    // ── Copy JSON ──────────────────────────────────────
+    function copyJSON() {
+      if (!currentResult) return;
+      navigator.clipboard.writeText(JSON.stringify(currentResult, null, 2))
+        .then(() => {
+          const btn = document.querySelector('.copy-json-btn');
+          btn.textContent = '✓ Copied!';
+          setTimeout(() => btn.textContent = '⎘ Copy JSON', 2000);
+        });
+    }
+  </script>
+</body>
+</html>
