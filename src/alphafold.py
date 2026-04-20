@@ -1,3 +1,8 @@
+import requests
+import logging
+
+logger = logging.getLogger(__name__)
+
 ALPHAFOLD_API  = 'https://alphafold.ebi.ac.uk/api/prediction'
 AF_PDB_URL     = 'https://alphafold.ebi.ac.uk/files/AF-{uid}-F1-model_v4.pdb'
 AF_VIEWER_URL  = 'https://alphafold.ebi.ac.uk/entry/{uid}'
